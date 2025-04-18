@@ -435,62 +435,99 @@ export default function ListingDetail() {
               
               {/* Order Card */}
               {!isOwner && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-4">
+                <Card className="overflow-hidden">
+                  <div className={`py-3 px-6 ${listing.isFree ? 'bg-green-50 border-b border-green-100' : 'bg-primary-50 border-b border-primary-100'}`}>
+                    <div className="flex justify-between items-center">
                       <h3 className="text-lg font-medium">
                         {listing.isFree ? 'Claim This Item' : 'Order Summary'}
                       </h3>
-                      <Badge className={listing.isFree ? 'bg-blue-500' : 'bg-primary-500'}>
-                        {listing.isFree ? 'Free' : `$${listing.price?.toFixed(2)}`}
+                      <Badge className={`shadow-sm ${listing.isFree ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'}`}>
+                        {listing.isFree ? 'Free' : `$${listing.price ? listing.price.toFixed(2) : '0.00'}`}
                       </Badge>
                     </div>
-                    
-                    <div className="space-y-2 mb-6">
+                  </div>
+                  
+                  <CardContent className="p-6">
+                    <div className="space-y-3 mb-6">
                       <div className="flex justify-between text-sm">
-                        <span className="text-neutral-600">Quantity:</span>
+                        <span className="text-muted-foreground font-medium">Availability:</span>
+                        <span className="font-semibold text-green-600">
+                          {listing.isAvailable ? 'Available Now' : 'Currently Unavailable'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground font-medium">Quantity:</span>
                         <span>{listing.quantity} {listing.quantity > 1 ? 'portions' : 'portion'}</span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground font-medium">Expires:</span>
+                        <span>{listing.expiresAt ? new Date(listing.expiresAt).toLocaleDateString() : 'Not specified'}</span>
                       </div>
                       
                       {!listing.isFree && (
                         <>
+                          <Separator className="my-3" />
                           <div className="flex justify-between text-sm">
-                            <span className="text-neutral-600">Price:</span>
-                            <span>${listing.price?.toFixed(2)}</span>
+                            <span className="text-muted-foreground font-medium">Price per portion:</span>
+                            <span>${listing.price ? listing.price.toFixed(2) : '0.00'}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-neutral-600">Service fee:</span>
-                            <span>$0.00</span>
+                            <span className="text-muted-foreground font-medium">Service fee:</span>
+                            <span className="text-green-600">Free</span>
                           </div>
-                          <Separator className="my-2" />
-                          <div className="flex justify-between font-medium">
+                          <Separator className="my-3" />
+                          <div className="flex justify-between font-semibold">
                             <span>Total:</span>
-                            <span>${listing.price?.toFixed(2)}</span>
+                            <span>${listing.price ? listing.price.toFixed(2) : '0.00'}</span>
                           </div>
                         </>
                       )}
                     </div>
                     
-                    <Button 
-                      className="w-full bg-primary-500 hover:bg-primary-600"
-                      onClick={handleOrderClick}
-                      disabled={createTransactionMutation.isPending}
-                    >
-                      {createTransactionMutation.isPending ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin mr-2">◌</div>
-                          Processing...
-                        </div>
-                      ) : listing.isFree ? (
-                        'Claim Now'
-                      ) : (
-                        'Order Now'
-                      )}
-                    </Button>
+                    <div className="space-y-3">
+                      <Button 
+                        className={`w-full ${listing.isFree 
+                          ? 'bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90' 
+                          : 'bg-gradient-to-r from-primary to-primary-foreground hover:opacity-90'}`}
+                        onClick={handleOrderClick}
+                        disabled={createTransactionMutation.isPending || !listing.isAvailable}
+                        size="lg"
+                      >
+                        {createTransactionMutation.isPending ? (
+                          <>
+                            <div className="mr-2 h-4 w-4 animate-spin">◌</div>
+                            Processing...
+                          </>
+                        ) : !listing.isAvailable ? (
+                          'Currently Unavailable'
+                        ) : listing.isFree ? (
+                          'Claim This Food'
+                        ) : (
+                          'Order Now'
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setShowContactDialog(true)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Contact Provider First
+                      </Button>
+                    </div>
                     
-                    <p className="text-xs text-neutral-500 text-center mt-3">
-                      By ordering, you agree to FoodShare's terms of service and food safety guidelines.
-                    </p>
+                    <div className="mt-5 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800">
+                      <div className="flex">
+                        <ShieldCheck className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium">Safe Sharing Guidelines</p>
+                          <p>We recommend meeting in a public place for food exchange and checking food quality before consuming.</p>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

@@ -44,6 +44,7 @@ const profileSchema = z.object({
 function ManageListings() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [editingListing, setEditingListing] = useState<FoodListing | null>(null);
   
   const { data: listings = [], isLoading, refetch } = useQuery<FoodListing[]>({
     queryKey: ['/api/users', user?.id, 'food-listings'],
@@ -84,11 +85,14 @@ function ManageListings() {
       }
       return { id, isAvailable };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       refetch();
       toast({
-        title: 'Listing updated',
-        description: 'Availability status updated successfully.',
+        title: data.isAvailable ? 'Listing is now available' : 'Listing marked as unavailable',
+        description: data.isAvailable 
+          ? 'Your food listing is now visible to everyone.' 
+          : 'Your food listing is now hidden from search results.',
+        variant: data.isAvailable ? 'default' : 'secondary',
       });
     },
     onError: (error: Error) => {
@@ -102,82 +106,115 @@ function ManageListings() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center my-8">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-muted-foreground">Loading your listings...</p>
       </div>
     );
   }
 
   if (listings.length === 0) {
     return (
-      <div className="text-center py-8">
-        <h3 className="text-xl font-semibold mb-2">No Listings Yet</h3>
-        <p className="text-gray-500 mb-4">You haven't created any food listings yet.</p>
-        <Button asChild>
-          <Link href="/create-listing">Create Your First Listing</Link>
+      <div className="text-center py-12 bg-muted/30 rounded-lg border border-muted/50">
+        <div className="text-5xl mb-4">🥗</div>
+        <h3 className="text-xl font-semibold mb-2">No Food Listings Yet</h3>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          When you share food with your community, your listings will appear here.
+          Start by creating your first listing!
+        </p>
+        <Button asChild size="lg" className="bg-gradient-to-r from-primary to-primary-foreground hover:opacity-90">
+          <Link href="/create-listing">
+            <PlusCircle className="w-5 h-5 mr-2" />
+            Create Your First Listing
+          </Link>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold">Your Food Listings</h3>
-        <Button asChild variant="outline">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h3 className="text-xl font-semibold">Your Food Listings</h3>
+          <p className="text-muted-foreground">Manage the food items you're sharing</p>
+        </div>
+        <Button asChild variant="default" className="bg-gradient-to-r from-primary to-primary-foreground hover:opacity-90">
           <Link href="/create-listing">
             <PlusCircle className="w-4 h-4 mr-2" />
-            New Listing
+            Add New Listing
           </Link>
         </Button>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {listings.map((listing) => (
-          <Card key={listing.id} className="overflow-hidden">
+          <Card key={listing.id} className="overflow-hidden transition-all duration-200 hover:shadow-md">
             <div className="relative">
-              {listing.images && listing.images.length > 0 && (
+              {listing.images && listing.images.length > 0 ? (
                 <img
                   src={listing.images[0]}
                   alt={listing.title}
-                  className="w-full h-40 object-cover"
+                  className="w-full h-48 object-cover"
                 />
+              ) : (
+                <div className="w-full h-48 bg-muted flex items-center justify-center">
+                  <p className="text-muted-foreground">No image available</p>
+                </div>
               )}
-              <div className="absolute top-2 right-2">
-                <Badge variant={listing.isAvailable ? "default" : "secondary"}>
+              <div className="absolute top-3 right-3">
+                <Badge variant={listing.isAvailable ? "default" : "secondary"} className="shadow-sm">
                   {listing.isAvailable ? "Available" : "Unavailable"}
                 </Badge>
               </div>
+              {listing.isFree && (
+                <div className="absolute top-3 left-3">
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 shadow-sm">
+                    Free
+                  </Badge>
+                </div>
+              )}
             </div>
-            <CardContent className="p-4">
-              <h4 className="font-semibold text-lg truncate">{listing.title}</h4>
-              <p className="text-sm text-gray-500 mb-2 truncate">{listing.description}</p>
-              <div className="flex justify-between items-center">
-                <div className="text-sm">
-                  <p><CalendarIcon className="inline w-4 h-4 mr-1" /> 
-                    Expires: {new Date(listing.expiresAt).toLocaleDateString()}
-                  </p>
+            <CardContent className="p-5">
+              <h4 className="font-semibold text-lg mb-1 truncate">{listing.title}</h4>
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{listing.description}</p>
+              
+              <div className="flex items-center text-sm mb-4 space-x-4">
+                <div className="flex items-center">
+                  <CalendarIcon className="w-4 h-4 mr-1 text-muted-foreground" /> 
+                  <span>
+                    Expires: {listing.expiresAt ? new Date(listing.expiresAt).toLocaleDateString() : 'N/A'}
+                  </span>
                 </div>
-                <div>
-                  {listing.price ? (
-                    <p className="font-semibold">${listing.price.toFixed(2)}</p>
-                  ) : (
-                    <Badge variant="outline" className="bg-green-50">Free</Badge>
-                  )}
-                </div>
+                
+                {!listing.isFree && listing.price && (
+                  <div className="font-medium">
+                    ${listing.price.toFixed(2)}
+                  </div>
+                )}
               </div>
               
-              <div className="mt-4 flex justify-between gap-2">
+              <div className="grid grid-cols-2 gap-3 mt-4">
                 <Button 
                   size="sm" 
-                  variant="outline"
+                  variant={listing.isAvailable ? "outline" : "default"}
                   onClick={() => toggleAvailability.mutate({ 
                     id: listing.id, 
                     isAvailable: !listing.isAvailable 
                   })}
                   disabled={toggleAvailability.isPending}
+                  className="w-full"
                 >
-                  {listing.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                  {toggleAvailability.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      {listing.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                    </>
+                  )}
                 </Button>
                 
                 <div className="flex gap-2">
@@ -185,6 +222,7 @@ function ManageListings() {
                     size="sm" 
                     variant="outline"
                     asChild
+                    className="flex-1"
                   >
                     <Link href={`/listing/${listing.id}`}>
                       <EyeIcon className="w-4 h-4 mr-1" />
@@ -196,13 +234,18 @@ function ManageListings() {
                     size="sm" 
                     variant="destructive"
                     onClick={() => {
-                      if (window.confirm('Are you sure you want to delete this listing?')) {
+                      if (window.confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
                         deleteMutation.mutate(listing.id);
                       }
                     }}
                     disabled={deleteMutation.isPending}
+                    className="aspect-square p-0 h-9 w-9"
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <TrashIcon className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -562,8 +605,8 @@ export default function Profile() {
                                   {transaction.buyerId === user.id ? 'Purchased' : 'Sold'} Item #{transaction.listingId}
                                 </h3>
                                 <p className="text-sm text-neutral-500">
-                                  {new Date(transaction.createdAt).toLocaleDateString()} • 
-                                  {transaction.amount > 0 ? ` $${transaction.amount.toFixed(2)}` : ' Free'}
+                                  {transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString() : 'N/A'} • 
+                                  {transaction.amount && transaction.amount > 0 ? ` $${transaction.amount.toFixed(2)}` : ' Free'}
                                 </p>
                               </div>
                               <Badge className={
