@@ -74,7 +74,7 @@ export default function HomePage() {
     lat: listing.latitude || 0,
     lng: listing.longitude || 0,
     title: listing.title,
-    isFeatured: listing.isFree === true,
+    isFeatured: listing.isFree === true ? true : false,
   }));
 
   return (
