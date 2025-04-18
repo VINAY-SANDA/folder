@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertFoodListingSchema, insertMessageSchema, insertTransactionSchema, insertReviewSchema } from "@shared/schema";
+import { foodListings } from "@shared/schema";
 import { z } from "zod";
 
 // Helper function to parse and validate with zod

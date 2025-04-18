@@ -51,7 +51,8 @@ export const foodListings = pgTable("food_listings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertFoodListingSchema = createInsertSchema(foodListings).pick({
+// Create the base schema and extend it to handle date format correctly
+const baseFoodListingSchema = createInsertSchema(foodListings).pick({
   title: true,
   description: true,
   images: true,
@@ -62,11 +63,27 @@ export const insertFoodListingSchema = createInsertSchema(foodListings).pick({
   category: true,
   ingredients: true,
   allergens: true,
-  expiresAt: true,
   location: true,
   latitude: true,
   longitude: true,
   userId: true,
+});
+
+// Extended schema with custom validation for expiresAt field
+export const insertFoodListingSchema = baseFoodListingSchema.extend({
+  expiresAt: z.preprocess(
+    // Convert string date to Date object
+    (arg) => {
+      if (typeof arg === 'string' || arg instanceof Date) {
+        return new Date(arg);
+      }
+      return arg;
+    },
+    z.date({
+      required_error: "Expiration date is required",
+      invalid_type_error: "Expiration date must be a valid date",
+    })
+  )
 });
 
 // Messages Schema
