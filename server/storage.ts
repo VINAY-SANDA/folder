@@ -2,8 +2,13 @@ import { users, foodListings, messages, transactions, reviews } from "@shared/sc
 import type { User, InsertUser, FoodListing, InsertFoodListing, Message, InsertMessage, Transaction, InsertTransaction, Review, InsertReview } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, sql, or } from "drizzle-orm";
+import { calculateDistance } from "@/lib/geolocation";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -40,7 +45,7 @@ export interface IStorage {
   getReviewsByListing(listingId: number): Promise<Review[]>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // session store type
 }
 
 export class MemStorage implements IStorage {
@@ -49,7 +54,7 @@ export class MemStorage implements IStorage {
   private messages: Map<number, Message>;
   private transactions: Map<number, Transaction>;
   private reviews: Map<number, Review>;
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Use any for session store
   currentUserId: number;
   currentFoodListingId: number;
   currentMessageId: number;
@@ -242,4 +247,228 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  sessionStore: any; // Use any type for sessionStore to match IStorage
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [createdUser] = await db.insert(users).values(user).returning();
+    return createdUser;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  // Food listing operations
+  async createFoodListing(listing: InsertFoodListing): Promise<FoodListing> {
+    const [createdListing] = await db
+      .insert(foodListings)
+      .values({
+        ...listing,
+        isAvailable: true
+      })
+      .returning();
+    return createdListing;
+  }
+
+  async getFoodListing(id: number): Promise<FoodListing | undefined> {
+    const [listing] = await db
+      .select()
+      .from(foodListings)
+      .where(eq(foodListings.id, id));
+    return listing;
+  }
+
+  async getFoodListingsByUser(userId: number): Promise<FoodListing[]> {
+    return await db
+      .select()
+      .from(foodListings)
+      .where(eq(foodListings.userId, userId));
+  }
+
+  async getFoodListingsByLocation(lat: number, lng: number, radiusMiles: number): Promise<FoodListing[]> {
+    // Get all available listings first
+    const allListings = await db
+      .select()
+      .from(foodListings)
+      .where(eq(foodListings.isAvailable, true));
+    
+    // Filter by distance in memory
+    // In a production app, we would use a more efficient approach with a spatial database query
+    return allListings.filter(listing => {
+      if (!listing.latitude || !listing.longitude) return false;
+      
+      const distance = calculateDistance(
+        lat, 
+        lng, 
+        listing.latitude, 
+        listing.longitude
+      );
+      
+      return distance <= radiusMiles;
+    });
+  }
+
+  async updateFoodListing(id: number, listingData: Partial<FoodListing>): Promise<FoodListing | undefined> {
+    const [updatedListing] = await db
+      .update(foodListings)
+      .set(listingData)
+      .where(eq(foodListings.id, id))
+      .returning();
+    return updatedListing;
+  }
+
+  async deleteFoodListing(id: number): Promise<boolean> {
+    const result = await db
+      .delete(foodListings)
+      .where(eq(foodListings.id, id));
+    return result.count > 0;
+  }
+
+  async getAllFoodListings(): Promise<FoodListing[]> {
+    return await db.select().from(foodListings);
+  }
+
+  // Message operations
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [createdMessage] = await db
+      .insert(messages)
+      .values({
+        ...message,
+        isRead: false
+      })
+      .returning();
+    return createdMessage;
+  }
+
+  async getMessagesByUser(userId: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          eq(messages.senderId, userId),
+          eq(messages.receiverId, userId)
+        )
+      );
+  }
+
+  async getConversation(user1Id: number, user2Id: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          and(
+            eq(messages.senderId, user1Id),
+            eq(messages.receiverId, user2Id)
+          ),
+          and(
+            eq(messages.senderId, user2Id),
+            eq(messages.receiverId, user1Id)
+          )
+        )
+      )
+      .orderBy(messages.createdAt);
+  }
+
+  async markMessageAsRead(id: number): Promise<boolean> {
+    const result = await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, id));
+    return result.count > 0;
+  }
+
+  // Transaction operations
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const [createdTransaction] = await db
+      .insert(transactions)
+      .values(transaction)
+      .returning();
+    return createdTransaction;
+  }
+
+  async getTransaction(id: number): Promise<Transaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
+    return transaction;
+  }
+
+  async getTransactionsByUser(userId: number): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(
+        or(
+          eq(transactions.buyerId, userId),
+          eq(transactions.sellerId, userId)
+        )
+      );
+  }
+
+  async updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined> {
+    const [updatedTransaction] = await db
+      .update(transactions)
+      .set(transactionData)
+      .where(eq(transactions.id, id))
+      .returning();
+    return updatedTransaction;
+  }
+
+  // Review operations
+  async createReview(review: InsertReview): Promise<Review> {
+    const [createdReview] = await db
+      .insert(reviews)
+      .values(review)
+      .returning();
+    return createdReview;
+  }
+
+  async getReviewsByUser(userId: number): Promise<Review[]> {
+    return await db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.receiverId, userId));
+  }
+
+  async getReviewsByListing(listingId: number): Promise<Review[]> {
+    return await db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.listingId, listingId));
+  }
+}
+
+// Use DatabaseStorage instead of MemStorage
+export const storage = new DatabaseStorage();
