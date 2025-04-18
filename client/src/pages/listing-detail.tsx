@@ -534,17 +534,104 @@ export default function ListingDetail() {
               
               {/* Listing Management (for owner) */}
               {isOwner && (
-                <Card>
+                <Card className="overflow-hidden">
+                  <div className="py-3 px-6 bg-primary-50 border-b border-primary-100">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Manage Your Listing</h3>
+                      <Badge className={listing?.isAvailable ? 'bg-green-500' : 'bg-red-500'}>
+                        {listing?.isAvailable ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  </div>
                   <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Manage Your Listing</h3>
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground font-medium">Status:</span>
+                        <span className={`font-semibold ${listing?.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                          {listing?.isAvailable ? 'Visible to everyone' : 'Hidden from search'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground font-medium">Created:</span>
+                        <span>{listing?.createdAt ? new Date(listing.createdAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground font-medium">Expires:</span>
+                        <span>{listing?.expiresAt ? new Date(listing.expiresAt).toLocaleDateString() : 'Not specified'}</span>
+                      </div>
+                    </div>
+                    
                     <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
+                      <Button 
+                        className="w-full" 
+                        variant="outline"
+                        onClick={() => setLocation(`/create-listing?edit=${listing?.id}`)}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
                         Edit Listing
                       </Button>
-                      <Button className="w-full bg-red-500 hover:bg-red-600 text-white">
-                        Mark as Unavailable
+                      
+                      <Button 
+                        className={`w-full ${listing?.isAvailable ? 
+                          'bg-red-500 hover:bg-red-600 text-white' : 
+                          'bg-green-500 hover:bg-green-600 text-white'}`}
+                        onClick={() => {
+                          if (listing) {
+                            toggleAvailability.mutate({ 
+                              id: listing.id, 
+                              isAvailable: !listing.isAvailable 
+                            });
+                          }
+                        }}
+                      >
+                        {toggleAvailability?.isPending ? (
+                          <>
+                            <div className="mr-2 h-4 w-4 animate-spin">◌</div>
+                            Updating...
+                          </>
+                        ) : listing?.isAvailable ? (
+                          <>Mark as Unavailable</>
+                        ) : (
+                          <>Mark as Available</>
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        className="w-full" 
+                        variant="outline"
+                        onClick={() => setLocation('/messages')}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        View Messages
                       </Button>
                     </div>
+                    
+                    <Separator className="my-6" />
+                    
+                    <Button 
+                      className="w-full" 
+                      variant="destructive"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
+                          // Add delete functionality here
+                          deleteMutation.mutate(listing?.id as number);
+                        }
+                      }}
+                    >
+                      {deleteMutation?.isPending ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin">◌</div>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <TrashIcon className="w-4 h-4 mr-2" />
+                          Delete Listing
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               )}
