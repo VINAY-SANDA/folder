@@ -248,7 +248,7 @@ export default function HomePage() {
                       // Nearby listings
                       nearbyListings.map(({ listing, distance }) => (
                         <Link key={listing.id} href={`/listing/${listing.id}`}>
-                          <a className="block bg-neutral-50 rounded-lg p-3 border border-neutral-200 cursor-pointer hover:border-primary-300 transition duration-200">
+                          <div className="block bg-neutral-50 rounded-lg p-3 border border-neutral-200 cursor-pointer hover:border-primary-300 transition duration-200">
                             <div className="flex items-center">
                               {listing.images && listing.images.length > 0 ? (
                                 <img 
@@ -272,7 +272,7 @@ export default function HomePage() {
                                 </div>
                               </div>
                             </div>
-                          </a>
+                          </div>
                         </Link>
                       ))
                     ) : (
