@@ -15,6 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { CalendarIcon, EyeIcon, PlusCircle, TrashIcon } from 'lucide-react';
+import { Link } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
 import {
   Form,
   FormControl,
@@ -24,7 +28,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2, User, MapPin, Mail, Phone, Star, Clock, Edit } from 'lucide-react';
 import FoodCard from '@/components/food-card';
 
@@ -36,6 +39,180 @@ const profileSchema = z.object({
   bio: z.string().optional(),
   profileImage: z.string().optional(),
 });
+
+// Component for managing food listings
+function ManageListings() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const { data: listings = [], isLoading, refetch } = useQuery<FoodListing[]>({
+    queryKey: ['/api/users', user?.id, 'food-listings'],
+    enabled: !!user,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest('DELETE', `/api/food-listings/${id}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to delete listing');
+      }
+      return id;
+    },
+    onSuccess: () => {
+      refetch();
+      toast({
+        title: 'Listing deleted',
+        description: 'Your food listing has been removed successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const toggleAvailability = useMutation({
+    mutationFn: async ({ id, isAvailable }: { id: number; isAvailable: boolean }) => {
+      const res = await apiRequest('PUT', `/api/food-listings/${id}`, { isAvailable });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to update listing');
+      }
+      return { id, isAvailable };
+    },
+    onSuccess: () => {
+      refetch();
+      toast({
+        title: 'Listing updated',
+        description: 'Availability status updated successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center my-8">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (listings.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <h3 className="text-xl font-semibold mb-2">No Listings Yet</h3>
+        <p className="text-gray-500 mb-4">You haven't created any food listings yet.</p>
+        <Button asChild>
+          <Link href="/create-listing">Create Your First Listing</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold">Your Food Listings</h3>
+        <Button asChild variant="outline">
+          <Link href="/create-listing">
+            <PlusCircle className="w-4 h-4 mr-2" />
+            New Listing
+          </Link>
+        </Button>
+      </div>
+      
+      <div className="grid gap-4 md:grid-cols-2">
+        {listings.map((listing) => (
+          <Card key={listing.id} className="overflow-hidden">
+            <div className="relative">
+              {listing.images && listing.images.length > 0 && (
+                <img
+                  src={listing.images[0]}
+                  alt={listing.title}
+                  className="w-full h-40 object-cover"
+                />
+              )}
+              <div className="absolute top-2 right-2">
+                <Badge variant={listing.isAvailable ? "default" : "secondary"}>
+                  {listing.isAvailable ? "Available" : "Unavailable"}
+                </Badge>
+              </div>
+            </div>
+            <CardContent className="p-4">
+              <h4 className="font-semibold text-lg truncate">{listing.title}</h4>
+              <p className="text-sm text-gray-500 mb-2 truncate">{listing.description}</p>
+              <div className="flex justify-between items-center">
+                <div className="text-sm">
+                  <p><CalendarIcon className="inline w-4 h-4 mr-1" /> 
+                    Expires: {new Date(listing.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  {listing.price ? (
+                    <p className="font-semibold">${listing.price.toFixed(2)}</p>
+                  ) : (
+                    <Badge variant="outline" className="bg-green-50">Free</Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-4 flex justify-between gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => toggleAvailability.mutate({ 
+                    id: listing.id, 
+                    isAvailable: !listing.isAvailable 
+                  })}
+                  disabled={toggleAvailability.isPending}
+                >
+                  {listing.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                </Button>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    asChild
+                  >
+                    <Link href={`/listing/${listing.id}`}>
+                      <EyeIcon className="w-4 h-4 mr-1" />
+                      View
+                    </Link>
+                  </Button>
+                  
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to delete this listing?')) {
+                        deleteMutation.mutate(listing.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Profile() {
   const { user } = useAuth();
@@ -282,7 +459,7 @@ export default function Profile() {
                       <div>
                         <h3 className="font-medium">Member Since</h3>
                         <p className="text-neutral-600">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Not available'}
                         </p>
                       </div>
                     </div>

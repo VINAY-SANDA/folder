@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,6 +10,7 @@ import CreateListing from "@/pages/create-listing";
 import ListingDetail from "@/pages/listing-detail";
 import Messages from "@/pages/messages";
 import Profile from "@/pages/profile";
+import SplashPage from "@/pages/splash-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import Header from "./components/layout/header";
@@ -18,8 +19,9 @@ import Footer from "./components/layout/footer";
 function Router() {
   return (
     <Switch>
+      <Route path="/" component={SplashPage} />
+      <Route path="/home" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
-      <Route path="/" component={HomePage} />
       <ProtectedRoute path="/create-listing" component={CreateListing} />
       <Route path="/listing/:id" component={ListingDetail} />
       <ProtectedRoute path="/messages" component={Messages} />
@@ -29,19 +31,36 @@ function Router() {
   );
 }
 
+function AppLayout() {
+  const [location] = useLocation();
+  
+  // Don't show header/footer on splash page
+  if (location === "/") {
+    return (
+      <main className="flex-grow">
+        <Router />
+      </main>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow">
+        <Router />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-grow">
-              <Router />
-            </main>
-            <Footer />
-            <Toaster />
-          </div>
+          <AppLayout />
+          <Toaster />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
