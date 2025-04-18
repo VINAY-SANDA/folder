@@ -1,0 +1,106 @@
+I'll create a comprehensive prompt for Replit to build your food waste reduction platform. This prompt includes all necessary details while being structured for clarity.
+Replit Development Prompt: FoodShare - Food Waste Reduction Platform
+Project Overview
+Create a web application called "FoodShare" that connects people with excess food to those seeking affordable meals. The platform aims to reduce food waste by facilitating the redistribution of surplus home-cooked meals and leftovers within local communities.
+Core Functionality
+
+User registration and profile management
+Food listing creation with photos, descriptions, quantity, pricing, and location
+Location-based search for available food listings
+In-app messaging between providers and consumers
+Transaction management and payment processing
+Rating and review system
+
+Technical Requirements
+Frontend
+
+React for component-based UI development
+Responsive design that works on mobile and desktop
+Material UI or Tailwind CSS for styling
+Redux for state management
+React Router for navigation
+
+Backend
+
+Node.js with Express framework
+RESTful API architecture
+JWT for authentication
+MongoDB integration for data storage
+Mongoose for data modeling
+
+Database Schema
+
+Users collection (profiles, contact info, location data)
+Listings collection (food details, images, pricing, availability)
+Transactions collection (order history, payment status)
+Reviews collection (user feedback, ratings)
+
+Key Features to Implement
+User Management
+
+Secure authentication (email/password, Google/Facebook OAuth)
+User profiles with contact information and location
+Verification system for food providers
+
+Food Listing Management
+
+Multi-image upload for food listings
+Form for entering food details (name, description, ingredients, allergens)
+Quantity and portion size specification
+Pricing options (including free items)
+Expiration time setting
+
+Search and Discovery
+
+Location-based search with adjustable radius
+Category and keyword filters
+Map view of nearby available food
+Sorting options (distance, price, rating)
+
+Transaction Processing
+
+In-app messaging between parties
+Pickup/delivery options and scheduling
+Secure payment processing (integrate Stripe API)
+Order status tracking
+
+Additional Features
+
+Push notifications for new nearby listings
+Rating system for food providers and consumers
+Social sharing capabilities
+Analytics dashboard for platform usage
+
+API Integrations
+
+Google Maps API for location services
+Stripe API for payment processing
+Cloudinary or AWS S3 for image storage
+Twilio for SMS notifications
+
+Deployment
+
+Set up CI/CD pipeline for automatic deployment
+Configure for AWS hosting
+Implement environment variable management
+Database backup procedures
+
+Security Considerations
+
+Data encryption for sensitive information
+Input validation and sanitization
+Protection against common web vulnerabilities
+GDPR compliance for user data
+
+Testing Requirements
+
+Unit tests for critical functions
+Integration tests for API endpoints
+UI testing for core user flows
+Performance testing under load
+
+Documentation
+
+API documentation with Swagger
+User guides for both food providers and consumers
+Admin documentation for platform management
