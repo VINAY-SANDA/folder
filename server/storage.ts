@@ -185,7 +185,10 @@ export class MemStorage implements IStorage {
       (message) => 
         (message.senderId === user1Id && message.receiverId === user2Id) ||
         (message.senderId === user2Id && message.receiverId === user1Id)
-    ).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    ).sort((a, b) => {
+      if (!a.createdAt || !b.createdAt) return 0;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
   }
 
   async markMessageAsRead(id: number): Promise<boolean> {
@@ -349,8 +352,9 @@ export class DatabaseStorage implements IStorage {
   async deleteFoodListing(id: number): Promise<boolean> {
     const result = await db
       .delete(foodListings)
-      .where(eq(foodListings.id, id));
-    return result.count > 0;
+      .where(eq(foodListings.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async getAllFoodListings(): Promise<FoodListing[]> {
@@ -404,8 +408,9 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(messages)
       .set({ isRead: true })
-      .where(eq(messages.id, id));
-    return result.count > 0;
+      .where(eq(messages.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // Transaction operations
